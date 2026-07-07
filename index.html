@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Road To Khatam Al-Quran</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header no-print">
+    <div class="app-shell header-row">
+      <div class="brand-wrap">
+        <div class="brand-badge">☪</div>
+        <div>
+          <h1>Sistem Road To Khatam Al-Quran</h1>
+          <p>Pengurusan rekod bacaan, kategori, analisis dan data Excel</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="print-btn" class="btn-ghost" type="button">🖨 Print</button>
+        <button id="export-excel-top" class="btn-light" type="button">⬇ Export Excel</button>
+      </div>
+    </div>
+    <nav class="app-shell nav-tabs">
+      <button type="button" class="nav-link active" data-tab="dashboard">📊 Dashboard</button>
+      <button type="button" class="nav-link" data-tab="rekod">👥 Rekod Murid</button>
+      <button type="button" class="nav-link" data-tab="tambah">➕ Tambah Murid</button>
+      <button type="button" class="nav-link" data-tab="analisis">📈 Analisis</button>
+      <button type="button" class="nav-link" data-tab="data">💾 Import / Export</button>
+    </nav>
+  </header>
+
+  <main class="app-shell main-area">
+    <section id="tab-dashboard" class="tab-content">
+      <div class="stats-grid">
+        <div class="stat-card accent-purple"><span>Jumlah Murid</span><strong id="stat-total">0</strong></div>
+        <div class="stat-card accent-blue"><span>Iqra</span><strong id="stat-iqra">0</strong></div>
+        <div class="stat-card accent-indigo"><span>Al-Quran</span><strong id="stat-quran">0</strong></div>
+        <div class="stat-card accent-pink"><span>Tamayyuz</span><strong id="stat-tamayyuz">0</strong></div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-title-row">
+          <div>
+            <h2>Kemajuan Purata Al-Quran</h2>
+            <p>Berdasarkan muka surat bacaan murid kategori Al-Quran.</p>
+          </div>
+          <strong id="progress-percent">0%</strong>
+        </div>
+        <div class="progress-track"><div id="overall-progress" class="progress-fill"></div></div>
+      </div>
+
+      <div class="dashboard-grid mt-6">
+        <div class="card">
+          <h2>🏆 Top 5 Pelajar Terbaik</h2>
+          <div id="top-five" class="list-block mt-4"></div>
+        </div>
+        <div class="card">
+          <h2>📌 Aliran Kategori</h2>
+          <div class="flow-line mt-4">
+            <span>Iqra</span><b>→</b><span>Al-Quran</span><b>→</b><span>Khatam</span><b>→</b><span>Mentor</span><b>→</b><span>Tamayyuz</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-rekod" class="tab-content hidden">
+      <div class="card mb-5">
+        <div class="filter-grid">
+          <input id="search-input" type="text" placeholder="Cari nama murid..." />
+          <select id="filter-tahun"><option value="">Semua Tahun</option><option>Tahun 1</option><option>Tahun 2</option><option>Tahun 3</option><option>Tahun 4</option><option>Tahun 5</option><option>Tahun 6</option></select>
+          <select id="filter-kelas"><option value="">Semua Kelas</option></select>
+          <select id="filter-status"><option value="">Semua Status</option><option>Hadir</option><option>Tidak Hadir</option></select>
+          <select id="filter-kategori"><option value="">Semua Kategori</option><option>Iqra</option><option>Al-Quran</option><option>Khatam</option><option>Mentor</option><option>Tamayyuz</option></select>
+          <button id="reset-filter" class="btn-secondary" type="button">Reset</button>
+        </div>
+      </div>
+
+      <div class="card table-card">
+        <div class="card-title-row mb-3"><h2>Senarai Rekod Murid</h2><button class="btn-primary" data-tab-target="tambah" type="button">+ Tambah Murid</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Nama</th><th>Tahun</th><th>Kelas</th><th>Kehadiran</th><th>Tarikh</th><th>Kategori</th><th>Maklumat Bacaan</th><th>Tindakan</th></tr></thead>
+            <tbody id="student-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-tambah" class="tab-content hidden">
+      <div class="form-card card">
+        <h2>Tambah Murid</h2>
+        <p class="muted mb-5">Isi maklumat murid dan bacaan mengikut kategori.</p>
+        <form id="add-form" class="form-stack">
+          <label>Nama Murid<input id="f-nama" required /></label>
+          <div class="form-grid">
+            <label>Tahun<select id="f-tahun" required><option value="">Pilih Tahun</option><option>Tahun 1</option><option>Tahun 2</option><option>Tahun 3</option><option>Tahun 4</option><option>Tahun 5</option><option>Tahun 6</option></select></label>
+            <label>Kelas<select id="f-kelas" required></select></label>
+          </div>
+          <div class="form-grid">
+            <label>Kehadiran<select id="f-kehadiran"><option>Hadir</option><option>Tidak Hadir</option></select></label>
+            <label>Tarikh<input id="f-tarikh" type="date" /></label>
+          </div>
+          <label>Kategori<select id="f-kategori"><option>Iqra</option><option>Al-Quran</option><option>Khatam</option><option>Mentor</option><option>Tamayyuz</option></select></label>
+
+          <div id="fields-reading" class="form-grid">
+            <label id="level-label">Iqra / Juzuk<input id="f-level" type="number" min="1" value="1" /></label>
+            <label>Muka Surat<input id="f-page" type="number" min="1" value="1" /></label>
+          </div>
+
+          <div id="fields-tamayyuz" class="hidden form-stack panel-soft">
+            <label>Status Hafazan<select id="f-tam-status"><option>Sedang Hafal</option><option>Hafazan Selesai</option></select></label>
+            <label>Surah<input id="f-tam-surah" placeholder="Contoh: Al-Mulk" /></label>
+            <label>Ayat<input id="f-tam-ayat" placeholder="Contoh: 1-15" /></label>
+          </div>
+
+          <div id="fields-mentee" class="hidden panel-soft">
+            <label>Nama Mentee<input id="f-mentee" placeholder="Nama pelajar yang dibimbing" /></label>
+          </div>
+
+          <label>Catatan Guru<textarea id="f-catatan" rows="3"></textarea></label>
+          <button class="btn-primary w-full" type="submit">Simpan Rekod</button>
+        </form>
+        <div id="form-msg" class="message hidden"></div>
+      </div>
+    </section>
+
+    <section id="tab-analisis" class="tab-content hidden">
+      <div class="analysis-grid">
+        <div class="card">
+          <h2>Graf Kehadiran Hari Ini</h2>
+          <div id="attendance-chart" class="mini-chart mt-5"></div>
+        </div>
+        <div class="card">
+          <h2>Taburan Kategori</h2>
+          <div id="category-chart" class="bar-list mt-5"></div>
+        </div>
+      </div>
+      <div class="card mt-6">
+        <h2>Ranking Al-Quran Top 10</h2>
+        <div id="quran-ranking" class="list-block mt-4"></div>
+      </div>
+
+      <div class="card mt-6">
+        <h2>📆 Graf Kemajuan Khatam Mengikut Bulan</h2>
+        <p class="muted mb-4">Jumlah murid yang direkod sebagai Khatam mengikut bulan.</p>
+        <div id="monthly-khatam-chart" class="bar-list mt-5"></div>
+      </div>
+
+      <div class="analysis-grid mt-6">
+        <div class="card">
+          <h2>📖 Carta Murid Mengikut Juzuk</h2>
+          <p class="muted mb-4">Bilangan murid kategori Al-Quran mengikut juzuk semasa.</p>
+          <div id="juzuk-chart" class="bar-list mt-5"></div>
+        </div>
+        <div class="card">
+          <h2>📚 Carta Iqra Mengikut Tahun</h2>
+          <p class="muted mb-4">Bilangan murid Iqra mengikut tahun dan tahap Iqra.</p>
+          <div id="iqra-year-chart" class="bar-list mt-5"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-data" class="tab-content hidden">
+      <div class="card form-card">
+        <h2>Import / Export Data</h2>
+        <p class="muted mb-5">Excel digunakan sebagai fail simpanan: import untuk baca data, export untuk simpan backup terkini.</p>
+        <div class="data-grid">
+          <button id="export-excel" class="btn-primary" type="button">Export Excel (.xlsx)</button>
+          <label class="btn-secondary text-center cursor-pointer">Import Excel / CSV / HTML<input id="import-file" type="file" accept=".xlsx,.xls,.csv,.html" class="hidden" /></label>
+          <button id="export-json" class="btn-dark" type="button">Backup JSON</button>
+          <button id="clear-data" class="btn-danger" type="button">Clear Data</button>
+        </div>
+        <div id="data-msg" class="message hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="edit-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head"><h2>Edit Murid</h2><button id="modal-close" type="button">✕</button></div>
+      <form id="edit-form" class="form-stack">
+        <input id="e-id" type="hidden" />
+        <label>Nama Murid<input id="e-nama" required /></label>
+        <div class="form-grid"><label>Tahun<select id="e-tahun"><option>Tahun 1</option><option>Tahun 2</option><option>Tahun 3</option><option>Tahun 4</option><option>Tahun 5</option><option>Tahun 6</option></select></label><label>Kelas<select id="e-kelas"></select></label></div>
+        <div class="form-grid"><label>Kehadiran<select id="e-kehadiran"><option>Hadir</option><option>Tidak Hadir</option></select></label><label>Tarikh<input id="e-tarikh" type="date" /></label></div>
+        <label>Kategori<select id="e-kategori"><option>Iqra</option><option>Al-Quran</option><option>Khatam</option><option>Mentor</option><option>Tamayyuz</option></select></label>
+        <div class="form-grid"><label>Iqra / Juzuk<input id="e-level" type="number" min="1" /></label><label>Muka Surat<input id="e-page" type="number" min="1" /></label></div>
+        <label>Nama Mentee<input id="e-mentee" /></label>
+        <label>Catatan<textarea id="e-catatan" rows="3"></textarea></label>
+        <div class="form-grid"><button class="btn-primary" type="submit">Simpan</button><button id="delete-record" class="btn-danger" type="button">Padam</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
