@@ -22,9 +22,7 @@
         </div>
       </div>
       <div class="header-actions">
-        <button onclick="logout()" class="btn-danger" type="button">Logout</button>
         <button id="print-btn" class="btn-ghost" type="button">🖨 Print</button>
-        
         <button id="export-excel-top" class="btn-light" type="button">⬇ Export Excel</button>
       </div>
     </div>
@@ -34,7 +32,6 @@
       <button type="button" class="nav-link" data-tab="tambah">➕ Tambah Murid</button>
       <button type="button" class="nav-link" data-tab="analisis">📈 Analisis</button>
       <button type="button" class="nav-link" data-tab="data">💾 Import / Export</button>
-      <button type="button" class="nav-link" data-tab="kelas">🏫 Update Kelas</button>
     </nav>
   </header>
 
@@ -103,7 +100,7 @@
           <label>Nama Murid<input id="f-nama" required /></label>
           <div class="form-grid">
             <label>Tahun<select id="f-tahun" required><option value="">Pilih Tahun</option><option>Tahun 1</option><option>Tahun 2</option><option>Tahun 3</option><option>Tahun 4</option><option>Tahun 5</option><option>Tahun 6</option></select></label>
-            <label>Kelas<select id="f-kelas" required><option value="">Pilih kelas</option></select></label>
+            <label>Kelas<select id="f-kelas" required></select></label>
           </div>
           <div class="form-grid">
             <label>Kehadiran<select id="f-kehadiran"><option>Hadir</option><option>Tidak Hadir</option></select></label>
@@ -148,68 +145,27 @@
         <h2>Ranking Al-Quran Top 10</h2>
         <div id="quran-ranking" class="list-block mt-4"></div>
       </div>
-    </section>
-<section id="tab-kelas" class="tab-content hidden">
-  <div class="card mb-5">
-    <h2>Update Satu Kelas</h2>
-    <p class="muted mb-5">Pilih kelas untuk paparkan semua murid, kemudian update bacaan secara pukal.</p>
 
-    <div class="filter-grid">
-      <select id="bulk-class-select"></select>
-      <button id="load-class-btn" class="btn-primary" type="button">Papar Murid</button>
-    </div>
-  </div>
-
-  <div class="card mb-5">
-    <h2>Senarai Murid Kelas</h2>
-    <div id="bulk-student-list" class="list-block mt-4"></div>
-  </div>
-
-  <div class="card form-card">
-    <h2>Update Bacaan Satu Kelas</h2>
-
-    <div class="form-stack">
-      <label>Kehadiran
-        <select id="bulk-kehadiran">
-          <option>Hadir</option>
-          <option>Tidak Hadir</option>
-        </select>
-      </label>
-
-      <label>Kategori
-        <select id="bulk-kategori">
-          <option>Iqra</option>
-          <option>Al-Quran</option>
-          <option>Khatam</option>
-          <option>Mentor</option>
-          <option>Tamayyuz</option>
-        </select>
-      </label>
-
-      <div class="form-grid">
-        <label>Iqra / Juzuk
-          <input id="bulk-level" type="number" min="1" value="1">
-        </label>
-
-        <label>Muka Surat
-          <input id="bulk-page" type="number" min="1" value="1">
-        </label>
+      <div class="card mt-6">
+        <h2>📆 Graf Kemajuan Khatam Mengikut Bulan</h2>
+        <p class="muted mb-4">Jumlah murid yang direkod sebagai Khatam mengikut bulan.</p>
+        <div id="monthly-khatam-chart" class="bar-list mt-5"></div>
       </div>
 
-      <label>Tarikh
-        <input id="bulk-tarikh" type="date">
-      </label>
+      <div class="analysis-grid mt-6">
+        <div class="card">
+          <h2>📖 Carta Murid Mengikut Juzuk</h2>
+          <p class="muted mb-4">Bilangan murid kategori Al-Quran mengikut juzuk semasa.</p>
+          <div id="juzuk-chart" class="bar-list mt-5"></div>
+        </div>
+        <div class="card">
+          <h2>📚 Carta Iqra Mengikut Tahun</h2>
+          <p class="muted mb-4">Bilangan murid Iqra mengikut tahun dan tahap Iqra.</p>
+          <div id="iqra-year-chart" class="bar-list mt-5"></div>
+        </div>
+      </div>
+    </section>
 
-      <label>Catatan
-        <textarea id="bulk-catatan" rows="3"></textarea>
-      </label>
-
-      <button id="bulk-update-btn" class="btn-primary" type="button">
-        Update Semua Murid Dalam Kelas
-      </button>
-    </div>
-  </div>
-</section>
     <section id="tab-data" class="tab-content hidden">
       <div class="card form-card">
         <h2>Import / Export Data</h2>
@@ -231,7 +187,7 @@
       <form id="edit-form" class="form-stack">
         <input id="e-id" type="hidden" />
         <label>Nama Murid<input id="e-nama" required /></label>
-        <div class="form-grid"><label>Tahun<select id="e-tahun"><option>Tahun 1</option><option>Tahun 2</option><option>Tahun 3</option><option>Tahun 4</option><option>Tahun 5</option><option>Tahun 6</option></select></label><label>Kelas<select id="e-kelas"><option value="">Pilih kelas</option></select></label></div>
+        <div class="form-grid"><label>Tahun<select id="e-tahun"><option>Tahun 1</option><option>Tahun 2</option><option>Tahun 3</option><option>Tahun 4</option><option>Tahun 5</option><option>Tahun 6</option></select></label><label>Kelas<select id="e-kelas"></select></label></div>
         <div class="form-grid"><label>Kehadiran<select id="e-kehadiran"><option>Hadir</option><option>Tidak Hadir</option></select></label><label>Tarikh<input id="e-tarikh" type="date" /></label></div>
         <label>Kategori<select id="e-kategori"><option>Iqra</option><option>Al-Quran</option><option>Khatam</option><option>Mentor</option><option>Tamayyuz</option></select></label>
         <div class="form-grid"><label>Iqra / Juzuk<input id="e-level" type="number" min="1" /></label><label>Muka Surat<input id="e-page" type="number" min="1" /></label></div>

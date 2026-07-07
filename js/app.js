@@ -1,63 +1,47 @@
-function requirePensyarahLogin(){
-  const session = JSON.parse(localStorage.getItem("rtk_session")) || null;
-
-  if(!session || session.role !== "pensyarah"){
-    window.location.href = "login.html";
-    return null;
-  }
-
-  return session;
-}
-
-function logout(){
-  localStorage.removeItem("rtk_session");
-  window.location.href = "login.html";
-}
 const STORAGE_KEY = 'rtk_original_records';
 let records = loadRecords();
-const today = new Date().toISOString().slice(0,10);
+const today = new Date().toISOString().slice(0, 10);
 
-const YEARS = ['Tahun 1','Tahun 2','Tahun 3','Tahun 4','Tahun 5','Tahun 6'];
-const STREAMS = ['Neuron','Nexus','Nova'];
+const YEARS = ['Tahun 1', 'Tahun 2', 'Tahun 3', 'Tahun 4', 'Tahun 5', 'Tahun 6'];
+const STREAMS = ['Neuron', 'Nexus', 'Nova'];
+const MONTHS_MS = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
 
-function loadRecords(){
+function loadRecords() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
   catch { return []; }
 }
 
-function saveRecords(){
+function saveRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 }
 
-function id(){
+function id() {
   return 'R' + Date.now() + Math.floor(Math.random() * 999);
 }
 
-function normalizeText(v){
+function normalizeText(v) {
   return String(v || '').trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function num(v){
-  return Number(v) || 0;
+function num(v) {
+  return Number(String(v || '').replace(/[^0-9.]/g, '')) || 0;
 }
 
-function getClassOptions(yearFilter = ''){
+function getClassOptions(yearFilter = '') {
   const years = yearFilter ? [yearFilter] : YEARS;
   return years.flatMap(year => STREAMS.map(stream => `${year} ${stream}`));
 }
 
-function normalizeClassName(value, fallbackYear = ''){
+function normalizeClassName(value, fallbackYear = '') {
   let raw = String(value || '').trim();
   if (!raw) return '';
 
   raw = raw.replace(/\s+/g, ' ');
   const upper = raw.toUpperCase();
-
   const stream = STREAMS.find(s => upper.includes(s.toUpperCase())) || '';
   let year = '';
 
   const yearMatch = upper.match(/TAHUN\s*([1-6])/) || upper.match(/\b([1-6])\b/);
-
   if (yearMatch) year = `Tahun ${yearMatch[1]}`;
   if (!year && fallbackYear) year = fallbackYear;
 
@@ -67,12 +51,11 @@ function normalizeClassName(value, fallbackYear = ''){
   return normalizeText(raw);
 }
 
-function renderClassDropdown(selectId, selectedValue = '', yearFilter = ''){
+function renderClassDropdown(selectId, selectedValue = '', yearFilter = '') {
   const select = document.getElementById(selectId);
   if (!select) return;
 
   const selected = normalizeClassName(selectedValue, yearFilter);
-
   select.innerHTML =
     '<option value="">Pilih kelas</option>' +
     getClassOptions(yearFilter).map(kelas =>
@@ -80,7 +63,47 @@ function renderClassDropdown(selectId, selectedValue = '', yearFilter = ''){
     ).join('');
 }
 
-function readingInfo(r){
+function cleanHeaderKey(key) {
+  return String(key || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function getValue(row, keys) {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+      return row[key];
+    }
+  }
+  return '';
+}
+
+function normalizeDate(value) {
+  if (!value) return today;
+
+  if (typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value);
+    if (date) {
+      const mm = String(date.m).padStart(2, '0');
+      const dd = String(date.d).padStart(2, '0');
+      return `${date.y}-${mm}-${dd}`;
+    }
+  }
+
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const parsed = new Date(raw);
+  if (!isNaN(parsed)) return parsed.toISOString().slice(0, 10);
+
+  return today;
+}
+
+function monthLabelFromDate(dateString) {
+  const date = new Date(dateString);
+  if (isNaN(date)) return 'Tidak Pasti';
+  return `${MONTHS_MS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function readingInfo(r) {
   if (r.kategori === 'Iqra') return `Iqra ${r.level || '-'} | M/S ${r.page || '-'}`;
   if (r.kategori === 'Al-Quran') return `Juzuk ${r.level || '-'} | M/S ${r.page || '-'}`;
   if (r.kategori === 'Khatam') return 'Khatam ✓';
@@ -91,7 +114,7 @@ function readingInfo(r){
   return '-';
 }
 
-function score(r){
+function score(r) {
   if (r.kategori === 'Al-Quran') return num(r.level) * 1000 + num(r.page);
   if (r.kategori === 'Khatam') return 999999;
   if (r.kategori === 'Tamayyuz') return 888888;
@@ -99,7 +122,7 @@ function score(r){
   return num(r.level) * 100 + num(r.page);
 }
 
-function showTab(tab){
+function showTab(tab) {
   document.querySelectorAll('.tab-content').forEach(s =>
     s.classList.toggle('hidden', s.id !== `tab-${tab}`)
   );
@@ -111,34 +134,34 @@ function showTab(tab){
   renderAll();
 }
 
-function renderAll(){
+function renderAll() {
   renderDashboard();
   renderTable();
   renderAnalysis();
   populateClassFilters();
 }
 
-function renderDashboard(){
+function renderDashboard() {
   document.getElementById('stat-total').textContent = records.length;
   document.getElementById('stat-iqra').textContent = records.filter(r => r.kategori === 'Iqra').length;
   document.getElementById('stat-quran').textContent = records.filter(r => r.kategori === 'Al-Quran').length;
   document.getElementById('stat-tamayyuz').textContent = records.filter(r => r.kategori === 'Tamayyuz').length;
 
   const q = records.filter(r => r.kategori === 'Al-Quran');
-  const avg = q.length ? q.reduce((a,r) => a + (num(r.page) / 604 * 100), 0) / q.length : 0;
+  const avg = q.length ? q.reduce((a, r) => a + (num(r.page) / 604 * 100), 0) / q.length : 0;
   const pct = Math.min(100, avg).toFixed(1);
 
   document.getElementById('overall-progress').style.width = pct + '%';
   document.getElementById('progress-percent').textContent = pct + '%';
 
-  const top = [...records].sort((a,b) => score(b) - score(a)).slice(0,5);
+  const top = [...records].sort((a, b) => score(b) - score(a)).slice(0, 5);
 
   document.getElementById('top-five').innerHTML = top.length
-    ? top.map((r,i) => `<div><span><b>${i+1}.</b> ${r.nama || '-'}</span><span>${readingInfo(r)}</span></div>`).join('')
+    ? top.map((r, i) => `<div><span><b>${i + 1}.</b> ${r.nama || '-'}</span><span>${readingInfo(r)}</span></div>`).join('')
     : '<p class="muted">Belum ada rekod.</p>';
 }
 
-function renderTable(){
+function renderTable() {
   const tbody = document.getElementById('student-table');
   if (!tbody) return;
 
@@ -148,7 +171,7 @@ function renderTable(){
   const status = document.getElementById('filter-status').value;
   const kat = document.getElementById('filter-kategori').value;
 
-  let list = records.filter(r =>
+  const list = records.filter(r =>
     (!search || String(r.nama || '').toLowerCase().includes(search)) &&
     (!tahun || r.tahun === tahun) &&
     (!kelas || r.kelas === kelas) &&
@@ -157,9 +180,9 @@ function renderTable(){
   );
 
   tbody.innerHTML = list.length
-    ? list.map((r,i) => `
+    ? list.map((r, i) => `
       <tr>
-        <td>${i+1}</td>
+        <td>${i + 1}</td>
         <td><b>${r.nama || '-'}</b></td>
         <td>${r.tahun || '-'}</td>
         <td>${r.kelas || '-'}</td>
@@ -178,7 +201,7 @@ function renderTable(){
     : `<tr><td colspan="9" class="text-center muted">Tiada rekod untuk kelas/tapis ini.</td></tr>`;
 }
 
-function populateClassFilters(){
+function populateClassFilters() {
   const sel = document.getElementById('filter-kelas');
   if (!sel) return;
 
@@ -193,7 +216,7 @@ function populateClassFilters(){
   if (current && !options.includes(current)) sel.value = '';
 }
 
-function renderAnalysis(){
+function renderAnalysis() {
   const hadir = records.filter(r => r.kehadiran === 'Hadir' && r.tarikh === today).length;
   const tidak = records.filter(r => r.kehadiran === 'Tidak Hadir' && r.tarikh === today).length;
   const max = Math.max(hadir, tidak, 1);
@@ -203,33 +226,106 @@ function renderAnalysis(){
     <div class="mini-bar"><div style="height:${tidak / max * 100}%"></div><b>${tidak}</b><span>Tidak Hadir</span></div>
   `;
 
-  const cats = {'Iqra':0,'Al-Quran':0,'Khatam':0,'Mentor':0,'Tamayyuz':0};
-
-  records.forEach(r => {
-    if (cats[r.kategori] != null) cats[r.kategori]++;
-  });
-
-  const maxC = Math.max(...Object.values(cats), 1);
-
-  document.getElementById('category-chart').innerHTML = Object.entries(cats).map(([k,v]) => `
-    <div class="bar-row">
-      <span>${k}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${v / maxC * 100}%"></div></div>
-      <b>${v}</b>
-    </div>
-  `).join('');
+  const cats = {'Iqra':0, 'Al-Quran':0, 'Khatam':0, 'Mentor':0, 'Tamayyuz':0};
+  records.forEach(r => { if (cats[r.kategori] != null) cats[r.kategori]++; });
+  renderBarList('category-chart', cats);
 
   const ranking = records
     .filter(r => r.kategori === 'Al-Quran')
-    .sort((a,b) => score(b) - score(a))
-    .slice(0,10);
+    .sort((a, b) => score(b) - score(a))
+    .slice(0, 10);
 
   document.getElementById('quran-ranking').innerHTML = ranking.length
-    ? ranking.map((r,i) => `<div><span><b>${i+1}.</b> ${r.nama || '-'}</span><span>${readingInfo(r)}</span></div>`).join('')
+    ? ranking.map((r, i) => `<div><span><b>${i + 1}.</b> ${r.nama || '-'}</span><span>${readingInfo(r)}</span></div>`).join('')
     : '<p class="muted">Belum ada ranking Al-Quran.</p>';
+
+  renderMonthlyKhatamChart();
+  renderJuzukChart();
+  renderIqraByYearChart();
 }
 
-function toggleFields(prefix = 'f'){
+function renderBarList(elementId, dataObj) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const max = Math.max(...Object.values(dataObj), 1);
+
+  el.innerHTML = Object.entries(dataObj).map(([k, v]) => `
+    <div class="bar-row">
+      <span>${k}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${v / max * 100}%"></div></div>
+      <b>${v}</b>
+    </div>
+  `).join('');
+}
+
+function renderMonthlyKhatamChart() {
+  const data = {};
+
+  records
+    .filter(r => r.kategori === 'Khatam')
+    .forEach(r => {
+      const label = monthLabelFromDate(r.tarikh);
+      data[label] = (data[label] || 0) + 1;
+    });
+
+  if (Object.keys(data).length === 0) {
+    document.getElementById('monthly-khatam-chart').innerHTML = '<p class="muted">Belum ada rekod Khatam.</p>';
+    return;
+  }
+
+  renderBarList('monthly-khatam-chart', data);
+}
+
+function renderJuzukChart() {
+  const data = {};
+
+  for (let i = 1; i <= 30; i++) data[`Juzuk ${i}`] = 0;
+
+  records
+    .filter(r => r.kategori === 'Al-Quran')
+    .forEach(r => {
+      const juzuk = num(r.level);
+      if (juzuk >= 1 && juzuk <= 30) data[`Juzuk ${juzuk}`]++;
+    });
+
+  const filtered = Object.fromEntries(Object.entries(data).filter(([_, v]) => v > 0));
+
+  if (Object.keys(filtered).length === 0) {
+    document.getElementById('juzuk-chart').innerHTML = '<p class="muted">Belum ada rekod Al-Quran mengikut Juzuk.</p>';
+    return;
+  }
+
+  renderBarList('juzuk-chart', filtered);
+}
+
+function renderIqraByYearChart() {
+  const data = {};
+
+  YEARS.forEach(year => {
+    for (let i = 1; i <= 6; i++) data[`${year} - Iqra ${i}`] = 0;
+  });
+
+  records
+    .filter(r => r.kategori === 'Iqra')
+    .forEach(r => {
+      const iqra = num(r.level);
+      const year = YEARS.includes(r.tahun) ? r.tahun : 'Tahun 1';
+      const key = `${year} - Iqra ${iqra}`;
+      if (data[key] !== undefined) data[key]++;
+    });
+
+  const filtered = Object.fromEntries(Object.entries(data).filter(([_, v]) => v > 0));
+
+  if (Object.keys(filtered).length === 0) {
+    document.getElementById('iqra-year-chart').innerHTML = '<p class="muted">Belum ada rekod Iqra mengikut tahun.</p>';
+    return;
+  }
+
+  renderBarList('iqra-year-chart', filtered);
+}
+
+function toggleFields(prefix = 'f') {
   const kat = document.getElementById(`${prefix}-kategori`).value;
 
   if (prefix === 'f') {
@@ -239,7 +335,7 @@ function toggleFields(prefix = 'f'){
   }
 }
 
-function buildRecord(prefix){
+function buildRecord(prefix) {
   const kat = document.getElementById(`${prefix}-kategori`).value;
   const tahun = document.getElementById(`${prefix}-tahun`).value;
 
@@ -261,7 +357,7 @@ function buildRecord(prefix){
   };
 }
 
-function openEdit(recordId){
+function openEdit(recordId) {
   const r = records.find(x => x.id === recordId);
   if (!r) return;
 
@@ -274,11 +370,11 @@ function openEdit(recordId){
   document.getElementById('edit-modal').classList.remove('hidden');
 }
 
-function closeEdit(){
+function closeEdit() {
   document.getElementById('edit-modal').classList.add('hidden');
 }
 
-function deleteRecord(recordId){
+function deleteRecord(recordId) {
   if (!confirm('Padam rekod ini?')) return;
 
   records = records.filter(r => r.id !== recordId);
@@ -287,7 +383,7 @@ function deleteRecord(recordId){
   renderAll();
 }
 
-function exportExcel(){
+function exportExcel() {
   if (typeof XLSX === 'undefined') {
     alert('Excel library belum load.');
     return;
@@ -298,7 +394,7 @@ function exportExcel(){
   XLSX.writeFile(wb, 'road-to-khatam-rekod.xlsx');
 }
 
-function exportJSON(){
+function exportJSON() {
   const blob = new Blob([JSON.stringify(records, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -306,23 +402,7 @@ function exportJSON(){
   a.click();
 }
 
-function cleanHeaderKey(key){
-  return String(key || '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ');
-}
-
-function getValue(row, keys){
-  for (const key of keys) {
-    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
-      return row[key];
-    }
-  }
-  return '';
-}
-
-function importRows(rows){
+function importRows(rows) {
   rows.forEach(row => {
     const lower = {};
 
@@ -335,7 +415,6 @@ function importRows(rows){
 
     let rawTahun = getValue(lower, ['tahun', 'tingkatan']);
     let rawKelas = getValue(lower, ['kelas']);
-
     let tahun = rawTahun ? normalizeText(rawTahun) : '';
 
     if (tahun && !tahun.toLowerCase().startsWith('tahun')) {
@@ -378,7 +457,7 @@ function importRows(rows){
       tahun: tahun,
       kelas: kelas,
       kehadiran: getValue(lower, ['kehadiran', 'status']) || 'Hadir',
-      tarikh: getValue(lower, ['tarikh', 'date']) || today,
+      tarikh: normalizeDate(getValue(lower, ['tarikh', 'date'])),
       kategori: kategori,
       level: iqra || juzuk || modul || '',
       page: iqraPage || mukaSurat || '',
@@ -394,27 +473,32 @@ function importRows(rows){
   renderAll();
 }
 
-async function importFile(file){
+function rowsFromSheet(sheet) {
+  const matrix = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
+  const headerIndex = matrix.findIndex(row => row.some(cell => cleanHeaderKey(cell) === 'nama'));
+
+  if (headerIndex >= 0) {
+    const headers = matrix[headerIndex].map(h => String(h || '').trim());
+    return matrix.slice(headerIndex + 1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        if (h) obj[h] = row[i] || '';
+      });
+      return obj;
+    });
+  }
+
+  return XLSX.utils.sheet_to_json(sheet, {range: 0, defval: ''});
+}
+
+async function importFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
 
   if (['xlsx','xls'].includes(ext)) {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf);
     const sheet = wb.Sheets[wb.SheetNames[0]];
-
-    let rows = XLSX.utils.sheet_to_json(sheet, {
-      range: 1,
-      defval: ''
-    });
-
-    if (!rows.length || !Object.keys(rows[0]).some(k => cleanHeaderKey(k).includes('nama'))) {
-      rows = XLSX.utils.sheet_to_json(sheet, {
-        range: 0,
-        defval: ''
-      });
-    }
-
-    importRows(rows);
+    importRows(rowsFromSheet(sheet));
     return;
   }
 
@@ -427,7 +511,7 @@ async function importFile(file){
     const rows = lines.map(l => {
       const v = l.split(',');
       const o = {};
-      headers.forEach((h,i) => o[h] = v[i] || '');
+      headers.forEach((h, i) => o[h] = v[i] || '');
       return o;
     });
 
@@ -443,83 +527,15 @@ async function importFile(file){
     const rows = trs.slice(1).map(tr => {
       const cells = [...tr.querySelectorAll('td,th')];
       const o = {};
-      heads.forEach((h,i) => o[h] = cells[i]?.textContent.trim() || '');
+      heads.forEach((h, i) => o[h] = cells[i]?.textContent.trim() || '');
       return o;
     });
 
     importRows(rows);
   }
 }
-function renderBulkClassDropdown(){
-  renderClassDropdown("bulk-class-select");
-  document.getElementById("bulk-tarikh").value = today;
-}
 
-function renderBulkStudentList(){
-  const kelas = document.getElementById("bulk-class-select").value;
-  const box = document.getElementById("bulk-student-list");
-
-  if(!kelas){
-    box.innerHTML = '<p class="muted">Sila pilih kelas.</p>';
-    return;
-  }
-
-  const list = records.filter(r => r.kelas === kelas);
-
-  if(list.length === 0){
-    box.innerHTML = '<p class="muted">Tiada murid dalam kelas ini.</p>';
-    return;
-  }
-
-  box.innerHTML = list.map((r, i) => `
-    <div>
-      <span><b>${i + 1}.</b> ${r.nama}</span>
-      <span>
-        ${readingInfo(r)}
-        <button class="link-btn" onclick="openEdit('${r.id}')">Edit</button>
-        <button class="delete-link" onclick="deleteRecord('${r.id}')">Padam</button>
-      </span>
-    </div>
-  `).join("");
-}
-
-function bulkUpdateClass(){
-  const kelas = document.getElementById("bulk-class-select").value;
-
-  if(!kelas){
-    alert("Sila pilih kelas dahulu.");
-    return;
-  }
-
-  if(!confirm("Update semua murid dalam kelas ini?")) return;
-
-  records = records.map(r => {
-    if(r.kelas !== kelas) return r;
-
-    return {
-      ...r,
-      kehadiran: document.getElementById("bulk-kehadiran").value,
-      kategori: document.getElementById("bulk-kategori").value,
-      level: document.getElementById("bulk-level").value,
-      page: document.getElementById("bulk-page").value,
-      tarikh: document.getElementById("bulk-tarikh").value || today,
-      catatan: document.getElementById("bulk-catatan").value.trim()
-    };
-  });
-
-  saveRecords();
-  renderAll();
-  renderBulkStudentList();
-
-  alert("Semua murid dalam kelas berjaya dikemaskini.");
-}
-renderBulkClassDropdown();
-
-document.getElementById("load-class-btn").addEventListener("click", renderBulkStudentList);
-document.getElementById("bulk-update-btn").addEventListener("click", bulkUpdateClass);
 document.addEventListener('DOMContentLoaded', () => {
-  const session = requirePensyarahLogin();
-if(!session) return;
   document.getElementById('f-tarikh').value = today;
 
   renderClassDropdown('f-kelas', '', document.getElementById('f-tahun').value);
