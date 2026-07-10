@@ -2,13 +2,38 @@ const STORAGE_KEY = 'rtk_original_records';
 let records = loadRecords();
 const today = new Date().toISOString().slice(0, 10);
 
-const YEARS = ['Tahun 1', 'Tahun 2', 'Tahun 3', 'Tahun 4', 'Tahun 5', 'Tahun 6'];
+const YEARS = [
+  'Tahun 1',
+  'Tahun 2',
+  'Tahun 3',
+  'Tahun 4',
+  'Tahun 5',
+  'Tahun 6'
+];
+
 const STREAMS = ['Neuron', 'Nexus', 'Nova'];
-const MONTHS_MS = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
+
+const MONTHS_MS = [
+  'Jan',
+  'Feb',
+  'Mac',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Ogos',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Dis'
+];
 
 function loadRecords() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
 }
 
 function saveRecords() {
@@ -19,117 +44,230 @@ function id() {
   return 'R' + Date.now() + Math.floor(Math.random() * 999);
 }
 
-function normalizeText(v) {
-  return String(v || '').trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+function normalizeText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, character => character.toUpperCase());
 }
 
-function num(v) {
-  return Number(String(v || '').replace(/[^0-9.]/g, '')) || 0;
+function num(value) {
+  return Number(String(value || '').replace(/[^0-9.]/g, '')) || 0;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
 }
 
 function getClassOptions(yearFilter = '') {
   const years = yearFilter ? [yearFilter] : YEARS;
-  return years.flatMap(year => STREAMS.map(stream => `${year} ${stream}`));
+
+  return years.flatMap(year =>
+    STREAMS.map(stream => `${year} ${stream}`)
+  );
 }
 
 function normalizeClassName(value, fallbackYear = '') {
   let raw = String(value || '').trim();
+
   if (!raw) return '';
 
   raw = raw.replace(/\s+/g, ' ');
+
   const upper = raw.toUpperCase();
-  const stream = STREAMS.find(s => upper.includes(s.toUpperCase())) || '';
+
+  const stream =
+    STREAMS.find(item => upper.includes(item.toUpperCase())) || '';
+
   let year = '';
 
-  const yearMatch = upper.match(/TAHUN\s*([1-6])/) || upper.match(/\b([1-6])\b/);
-  if (yearMatch) year = `Tahun ${yearMatch[1]}`;
-  if (!year && fallbackYear) year = fallbackYear;
+  const yearMatch =
+    upper.match(/TAHUN\s*([1-6])/) ||
+    upper.match(/\b([1-6])\b/);
 
-  if (year && stream) return `${year} ${stream}`;
-  if (stream && fallbackYear) return `${fallbackYear} ${stream}`;
+  if (yearMatch) {
+    year = `Tahun ${yearMatch[1]}`;
+  }
+
+  if (!year && fallbackYear) {
+    year = fallbackYear;
+  }
+
+  if (year && stream) {
+    return `${year} ${stream}`;
+  }
+
+  if (stream && fallbackYear) {
+    return `${fallbackYear} ${stream}`;
+  }
 
   return normalizeText(raw);
 }
 
-function renderClassDropdown(selectId, selectedValue = '', yearFilter = '') {
+function renderClassDropdown(
+  selectId,
+  selectedValue = '',
+  yearFilter = ''
+) {
   const select = document.getElementById(selectId);
+
   if (!select) return;
 
-  const selected = normalizeClassName(selectedValue, yearFilter);
+  const selected = normalizeClassName(
+    selectedValue,
+    yearFilter
+  );
+
   select.innerHTML =
     '<option value="">Pilih kelas</option>' +
-    getClassOptions(yearFilter).map(kelas =>
-      `<option value="${kelas}" ${kelas === selected ? 'selected' : ''}>${kelas}</option>`
-    ).join('');
+    getClassOptions(yearFilter)
+      .map(kelas => `
+        <option
+          value="${kelas}"
+          ${kelas === selected ? 'selected' : ''}
+        >
+          ${kelas}
+        </option>
+      `)
+      .join('');
 }
 
 function cleanHeaderKey(key) {
-  return String(key || '').toLowerCase().trim().replace(/\s+/g, ' ');
+  return String(key || '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
 }
 
 function getValue(row, keys) {
   for (const key of keys) {
-    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+    if (
+      row[key] !== undefined &&
+      row[key] !== null &&
+      String(row[key]).trim() !== ''
+    ) {
       return row[key];
     }
   }
+
   return '';
 }
 
 function normalizeDate(value) {
   if (!value) return today;
 
-  if (typeof value === 'number') {
+  if (typeof value === 'number' && typeof XLSX !== 'undefined') {
     const date = XLSX.SSF.parse_date_code(value);
+
     if (date) {
-      const mm = String(date.m).padStart(2, '0');
-      const dd = String(date.d).padStart(2, '0');
-      return `${date.y}-${mm}-${dd}`;
+      const month = String(date.m).padStart(2, '0');
+      const day = String(date.d).padStart(2, '0');
+
+      return `${date.y}-${month}-${day}`;
     }
   }
 
   const raw = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
 
   const parsed = new Date(raw);
-  if (!isNaN(parsed)) return parsed.toISOString().slice(0, 10);
+
+  if (!isNaN(parsed)) {
+    return parsed.toISOString().slice(0, 10);
+  }
 
   return today;
 }
 
 function monthLabelFromDate(dateString) {
   const date = new Date(dateString);
+
   if (isNaN(date)) return 'Tidak Pasti';
+
   return `${MONTHS_MS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-function readingInfo(r) {
-  if (r.kategori === 'Iqra') return `Iqra ${r.level || '-'} | M/S ${r.page || '-'}`;
-  if (r.kategori === 'Al-Quran') return `Juzuk ${r.level || '-'} | M/S ${r.page || '-'}`;
-  if (r.kategori === 'Khatam') return 'Khatam ✓';
-  if (r.kategori === 'Mentor') return `Mentor${r.mentee ? ' kepada ' + r.mentee : ''}`;
-  if (r.kategori === 'Tamayyuz') {
-    return `${r.tam_status || 'Sedang Hafal'}${r.tam_surah ? ' | ' + r.tam_surah : ''}${r.tam_ayat ? ' (' + r.tam_ayat + ')' : ''}${r.mentee ? ' | Mentee: ' + r.mentee : ''}`;
+function readingInfo(record) {
+  if (record.kategori === 'Iqra') {
+    return `Iqra ${record.level || '-'} | M/S ${record.page || '-'}`;
   }
+
+  if (record.kategori === 'Al-Quran') {
+    return `Juzuk ${record.level || '-'} | M/S ${record.page || '-'}`;
+  }
+
+  if (record.kategori === 'Khatam') {
+    return 'Khatam ✓';
+  }
+
+  if (record.kategori === 'Mentor') {
+    return `Mentor${
+      record.mentee ? ' kepada ' + record.mentee : ''
+    }`;
+  }
+
+  if (record.kategori === 'Tamayyuz') {
+    return `${
+      record.tam_status || 'Sedang Hafal'
+    }${
+      record.tam_surah ? ' | ' + record.tam_surah : ''
+    }${
+      record.tam_ayat ? ' (' + record.tam_ayat + ')' : ''
+    }${
+      record.mentee ? ' | Mentee: ' + record.mentee : ''
+    }`;
+  }
+
   return '-';
 }
 
-function score(r) {
-  if (r.kategori === 'Al-Quran') return num(r.level) * 1000 + num(r.page);
-  if (r.kategori === 'Khatam') return 999999;
-  if (r.kategori === 'Tamayyuz') return 888888;
-  if (r.kategori === 'Mentor') return 777777;
-  return num(r.level) * 100 + num(r.page);
+function score(record) {
+  if (record.kategori === 'Al-Quran') {
+    return num(record.level) * 1000 + num(record.page);
+  }
+
+  if (record.kategori === 'Khatam') {
+    return 999999;
+  }
+
+  if (record.kategori === 'Tamayyuz') {
+    return 888888;
+  }
+
+  if (record.kategori === 'Mentor') {
+    return 777777;
+  }
+
+  return num(record.level) * 100 + num(record.page);
 }
 
 function showTab(tab) {
-  document.querySelectorAll('.tab-content').forEach(s =>
-    s.classList.toggle('hidden', s.id !== `tab-${tab}`)
-  );
+  document
+    .querySelectorAll('.tab-content')
+    .forEach(section => {
+      section.classList.toggle(
+        'hidden',
+        section.id !== `tab-${tab}`
+      );
+    });
 
-  document.querySelectorAll('.nav-link[data-tab]').forEach(b =>
-    b.classList.toggle('active', b.dataset.tab === tab)
-  );
+  document
+    .querySelectorAll('.nav-link[data-tab]')
+    .forEach(button => {
+      button.classList.toggle(
+        'active',
+        button.dataset.tab === tab
+      );
+    });
 
   renderAll();
 }
@@ -142,242 +280,763 @@ function renderAll() {
 }
 
 function renderDashboard() {
-  document.getElementById('stat-total').textContent = records.length;
-  document.getElementById('stat-iqra').textContent = records.filter(r => r.kategori === 'Iqra').length;
-  document.getElementById('stat-quran').textContent = records.filter(r => r.kategori === 'Al-Quran').length;
-  document.getElementById('stat-tamayyuz').textContent = records.filter(r => r.kategori === 'Tamayyuz').length;
+  const statTotal = document.getElementById('stat-total');
+  const statIqra = document.getElementById('stat-iqra');
+  const statQuran = document.getElementById('stat-quran');
+  const statTamayyuz = document.getElementById('stat-tamayyuz');
 
-  const q = records.filter(r => r.kategori === 'Al-Quran');
-  const avg = q.length ? q.reduce((a, r) => a + (num(r.page) / 604 * 100), 0) / q.length : 0;
-  const pct = Math.min(100, avg).toFixed(1);
+  if (statTotal) {
+    statTotal.textContent = records.length;
+  }
 
-  document.getElementById('overall-progress').style.width = pct + '%';
-  document.getElementById('progress-percent').textContent = pct + '%';
+  if (statIqra) {
+    statIqra.textContent = records.filter(
+      record => record.kategori === 'Iqra'
+    ).length;
+  }
 
-  const top = [...records].sort((a, b) => score(b) - score(a)).slice(0, 5);
+  if (statQuran) {
+    statQuran.textContent = records.filter(
+      record => record.kategori === 'Al-Quran'
+    ).length;
+  }
 
-  document.getElementById('top-five').innerHTML = top.length
-    ? top.map((r, i) => `<div><span><b>${i + 1}.</b> ${r.nama || '-'}</span><span>${readingInfo(r)}</span></div>`).join('')
-    : '<p class="muted">Belum ada rekod.</p>';
+  if (statTamayyuz) {
+    statTamayyuz.textContent = records.filter(
+      record => record.kategori === 'Tamayyuz'
+    ).length;
+  }
+
+  const quranRecords = records.filter(
+    record => record.kategori === 'Al-Quran'
+  );
+
+  const averageProgress = quranRecords.length
+    ? quranRecords.reduce(
+        (total, record) =>
+          total + (num(record.page) / 604) * 100,
+        0
+      ) / quranRecords.length
+    : 0;
+
+  const percentage = Math.min(
+    100,
+    averageProgress
+  ).toFixed(1);
+
+  const progressBar =
+    document.getElementById('overall-progress');
+
+  const progressText =
+    document.getElementById('progress-percent');
+
+  if (progressBar) {
+    progressBar.style.width = percentage + '%';
+  }
+
+  if (progressText) {
+    progressText.textContent = percentage + '%';
+  }
+
+  const year6Records = records
+    .filter(record => {
+      const yearText = String(record.tahun || '').trim();
+      const classText = String(record.kelas || '').trim();
+
+      return (
+        yearText === 'Tahun 6' ||
+        classText.startsWith('Tahun 6')
+      );
+    })
+    .sort((a, b) => {
+      const classComparison = String(a.kelas || '')
+        .localeCompare(String(b.kelas || ''));
+
+      if (classComparison !== 0) {
+        return classComparison;
+      }
+
+      return String(a.nama || '')
+        .localeCompare(String(b.nama || ''));
+    });
+
+  const year6Stat =
+    document.getElementById('stat-year6');
+
+  if (year6Stat) {
+    year6Stat.textContent = year6Records.length;
+  }
+
+  const year6Table =
+    document.getElementById('year6-table');
+
+  if (!year6Table) return;
+
+  if (year6Records.length === 0) {
+    year6Table.innerHTML = `
+      <tr>
+        <td colspan="9" class="text-center muted">
+          Tiada rekod murid Tahun 6.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  year6Table.innerHTML = year6Records
+    .map((record, index) => `
+      <tr>
+        <td>${index + 1}</td>
+
+        <td>
+          <b>${escapeHtml(record.nama || '-')}</b>
+        </td>
+
+        <td>
+          ${escapeHtml(record.tahun || '-')}
+        </td>
+
+        <td>
+          ${escapeHtml(record.kelas || '-')}
+        </td>
+
+        <td>
+          <span class="badge ${
+            record.kehadiran === 'Hadir'
+              ? 'badge-green'
+              : 'badge-red'
+          }">
+            ${escapeHtml(record.kehadiran || '-')}
+          </span>
+        </td>
+
+        <td>
+          ${escapeHtml(record.tarikh || '-')}
+        </td>
+
+        <td>
+          <span class="badge">
+            ${escapeHtml(record.kategori || '-')}
+          </span>
+        </td>
+
+        <td>
+          ${escapeHtml(readingInfo(record))}
+        </td>
+
+        <td>
+          <div class="table-actions">
+            <button
+              class="link-btn"
+              type="button"
+              onclick="openEdit('${record.id}')"
+            >
+              Edit
+            </button>
+
+            <button
+              class="delete-link"
+              type="button"
+              onclick="deleteRecord('${record.id}')"
+            >
+              Padam
+            </button>
+          </div>
+        </td>
+      </tr>
+    `)
+    .join('');
 }
 
 function renderTable() {
-  const tbody = document.getElementById('student-table');
+  const tbody =
+    document.getElementById('student-table');
+
   if (!tbody) return;
 
-  const search = document.getElementById('search-input').value.toLowerCase().trim();
-  const tahun = document.getElementById('filter-tahun').value;
-  const kelas = document.getElementById('filter-kelas').value;
-  const status = document.getElementById('filter-status').value;
-  const kat = document.getElementById('filter-kategori').value;
+  const search = document
+    .getElementById('search-input')
+    .value
+    .toLowerCase()
+    .trim();
 
-  const list = records.filter(r =>
-    (!search || String(r.nama || '').toLowerCase().includes(search)) &&
-    (!tahun || r.tahun === tahun) &&
-    (!kelas || r.kelas === kelas) &&
-    (!status || r.kehadiran === status) &&
-    (!kat || r.kategori === kat)
+  const tahun =
+    document.getElementById('filter-tahun').value;
+
+  const kelas =
+    document.getElementById('filter-kelas').value;
+
+  const status =
+    document.getElementById('filter-status').value;
+
+  const kategori =
+    document.getElementById('filter-kategori').value;
+
+  const list = records.filter(record =>
+    (
+      !search ||
+      String(record.nama || '')
+        .toLowerCase()
+        .includes(search)
+    ) &&
+    (
+      !tahun ||
+      record.tahun === tahun
+    ) &&
+    (
+      !kelas ||
+      record.kelas === kelas
+    ) &&
+    (
+      !status ||
+      record.kehadiran === status
+    ) &&
+    (
+      !kategori ||
+      record.kategori === kategori
+    )
   );
 
   tbody.innerHTML = list.length
-    ? list.map((r, i) => `
+    ? list.map((record, index) => `
       <tr>
-        <td>${i + 1}</td>
-        <td><b>${r.nama || '-'}</b></td>
-        <td>${r.tahun || '-'}</td>
-        <td>${r.kelas || '-'}</td>
-        <td><span class="badge ${r.kehadiran === 'Hadir' ? 'badge-green' : 'badge-red'}">${r.kehadiran || '-'}</span></td>
-        <td>${r.tarikh || '-'}</td>
-        <td><span class="badge">${r.kategori || '-'}</span></td>
-        <td>${readingInfo(r)}</td>
+        <td>${index + 1}</td>
+
+        <td>
+          <b>${escapeHtml(record.nama || '-')}</b>
+        </td>
+
+        <td>
+          ${escapeHtml(record.tahun || '-')}
+        </td>
+
+        <td>
+          ${escapeHtml(record.kelas || '-')}
+        </td>
+
+        <td>
+          <span class="badge ${
+            record.kehadiran === 'Hadir'
+              ? 'badge-green'
+              : 'badge-red'
+          }">
+            ${escapeHtml(record.kehadiran || '-')}
+          </span>
+        </td>
+
+        <td>
+          ${escapeHtml(record.tarikh || '-')}
+        </td>
+
+        <td>
+          <span class="badge">
+            ${escapeHtml(record.kategori || '-')}
+          </span>
+        </td>
+
+        <td>
+          ${escapeHtml(readingInfo(record))}
+        </td>
+
         <td>
           <div class="table-actions">
-            <button class="link-btn" onclick="openEdit('${r.id}')">Edit</button>
-            <button class="delete-link" onclick="deleteRecord('${r.id}')">Padam</button>
+            <button
+              class="link-btn"
+              type="button"
+              onclick="openEdit('${record.id}')"
+            >
+              Edit
+            </button>
+
+            <button
+              class="delete-link"
+              type="button"
+              onclick="deleteRecord('${record.id}')"
+            >
+              Padam
+            </button>
           </div>
         </td>
       </tr>
     `).join('')
-    : `<tr><td colspan="9" class="text-center muted">Tiada rekod untuk kelas/tapis ini.</td></tr>`;
+    : `
+      <tr>
+        <td colspan="9" class="text-center muted">
+          Tiada rekod untuk kelas atau tapisan ini.
+        </td>
+      </tr>
+    `;
 }
 
 function populateClassFilters() {
-  const sel = document.getElementById('filter-kelas');
-  if (!sel) return;
+  const select =
+    document.getElementById('filter-kelas');
 
-  const current = sel.value;
-  const year = document.getElementById('filter-tahun')?.value || '';
-  const options = getClassOptions(year);
+  if (!select) return;
 
-  sel.innerHTML =
+  const current = select.value;
+
+  const year =
+    document.getElementById('filter-tahun')?.value || '';
+
+  const options =
+    getClassOptions(year);
+
+  select.innerHTML =
     '<option value="">Semua Kelas</option>' +
-    options.map(c => `<option value="${c}" ${c === current ? 'selected' : ''}>${c}</option>`).join('');
+    options
+      .map(kelas => `
+        <option
+          value="${kelas}"
+          ${kelas === current ? 'selected' : ''}
+        >
+          ${kelas}
+        </option>
+      `)
+      .join('');
 
-  if (current && !options.includes(current)) sel.value = '';
+  if (
+    current &&
+    !options.includes(current)
+  ) {
+    select.value = '';
+  }
 }
 
 function renderAnalysis() {
-  const hadir = records.filter(r => r.kehadiran === 'Hadir' && r.tarikh === today).length;
-  const tidak = records.filter(r => r.kehadiran === 'Tidak Hadir' && r.tarikh === today).length;
-  const max = Math.max(hadir, tidak, 1);
+  const hadir = records.filter(record =>
+    record.kehadiran === 'Hadir' &&
+    record.tarikh === today
+  ).length;
 
-  document.getElementById('attendance-chart').innerHTML = `
-    <div class="mini-bar"><div style="height:${hadir / max * 100}%"></div><b>${hadir}</b><span>Hadir</span></div>
-    <div class="mini-bar"><div style="height:${tidak / max * 100}%"></div><b>${tidak}</b><span>Tidak Hadir</span></div>
-  `;
+  const tidakHadir = records.filter(record =>
+    record.kehadiran === 'Tidak Hadir' &&
+    record.tarikh === today
+  ).length;
 
-  const cats = {'Iqra':0, 'Al-Quran':0, 'Khatam':0, 'Mentor':0, 'Tamayyuz':0};
-  records.forEach(r => { if (cats[r.kategori] != null) cats[r.kategori]++; });
-  renderBarList('category-chart', cats);
+  const maximum =
+    Math.max(hadir, tidakHadir, 1);
+
+  const attendanceChart =
+    document.getElementById('attendance-chart');
+
+  if (attendanceChart) {
+    attendanceChart.innerHTML = `
+      <div class="mini-bar">
+        <div style="height:${hadir / maximum * 100}%"></div>
+        <b>${hadir}</b>
+        <span>Hadir</span>
+      </div>
+
+      <div class="mini-bar">
+        <div style="height:${tidakHadir / maximum * 100}%"></div>
+        <b>${tidakHadir}</b>
+        <span>Tidak Hadir</span>
+      </div>
+    `;
+  }
+
+  const categories = {
+    'Iqra': 0,
+    'Al-Quran': 0,
+    'Khatam': 0,
+    'Mentor': 0,
+    'Tamayyuz': 0
+  };
+
+  records.forEach(record => {
+    if (
+      categories[record.kategori] !== undefined
+    ) {
+      categories[record.kategori]++;
+    }
+  });
+
+  renderBarList(
+    'category-chart',
+    categories
+  );
 
   const ranking = records
-    .filter(r => r.kategori === 'Al-Quran')
-    .sort((a, b) => score(b) - score(a))
+    .filter(
+      record => record.kategori === 'Al-Quran'
+    )
+    .sort(
+      (a, b) => score(b) - score(a)
+    )
     .slice(0, 10);
 
-  document.getElementById('quran-ranking').innerHTML = ranking.length
-    ? ranking.map((r, i) => `<div><span><b>${i + 1}.</b> ${r.nama || '-'}</span><span>${readingInfo(r)}</span></div>`).join('')
-    : '<p class="muted">Belum ada ranking Al-Quran.</p>';
+  const rankingElement =
+    document.getElementById('quran-ranking');
+
+  if (rankingElement) {
+    rankingElement.innerHTML = ranking.length
+      ? ranking
+          .map((record, index) => `
+            <div>
+              <span>
+                <b>${index + 1}.</b>
+                ${escapeHtml(record.nama || '-')}
+              </span>
+
+              <span>
+                ${escapeHtml(readingInfo(record))}
+              </span>
+            </div>
+          `)
+          .join('')
+      : `
+        <p class="muted">
+          Belum ada ranking Al-Quran.
+        </p>
+      `;
+  }
 
   renderMonthlyKhatamChart();
   renderJuzukChart();
   renderIqraByYearChart();
 }
 
-function renderBarList(elementId, dataObj) {
-  const el = document.getElementById(elementId);
-  if (!el) return;
+function renderBarList(elementId, dataObject) {
+  const element =
+    document.getElementById(elementId);
 
-  const max = Math.max(...Object.values(dataObj), 1);
+  if (!element) return;
 
-  el.innerHTML = Object.entries(dataObj).map(([k, v]) => `
-    <div class="bar-row">
-      <span>${k}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${v / max * 100}%"></div></div>
-      <b>${v}</b>
-    </div>
-  `).join('');
+  const maximum =
+    Math.max(...Object.values(dataObject), 1);
+
+  element.innerHTML = Object.entries(dataObject)
+    .map(([label, total]) => `
+      <div class="bar-row">
+        <span>${escapeHtml(label)}</span>
+
+        <div class="bar-track">
+          <div
+            class="bar-fill"
+            style="width:${total / maximum * 100}%"
+          ></div>
+        </div>
+
+        <b>${total}</b>
+      </div>
+    `)
+    .join('');
 }
 
 function renderMonthlyKhatamChart() {
   const data = {};
 
   records
-    .filter(r => r.kategori === 'Khatam')
-    .forEach(r => {
-      const label = monthLabelFromDate(r.tarikh);
-      data[label] = (data[label] || 0) + 1;
+    .filter(record =>
+      record.kategori === 'Khatam'
+    )
+    .forEach(record => {
+      const label =
+        monthLabelFromDate(record.tarikh);
+
+      data[label] =
+        (data[label] || 0) + 1;
     });
 
+  const element =
+    document.getElementById(
+      'monthly-khatam-chart'
+    );
+
+  if (!element) return;
+
   if (Object.keys(data).length === 0) {
-    document.getElementById('monthly-khatam-chart').innerHTML = '<p class="muted">Belum ada rekod Khatam.</p>';
+    element.innerHTML = `
+      <p class="muted">
+        Belum ada rekod Khatam.
+      </p>
+    `;
     return;
   }
 
-  renderBarList('monthly-khatam-chart', data);
+  renderBarList(
+    'monthly-khatam-chart',
+    data
+  );
 }
 
 function renderJuzukChart() {
   const data = {};
 
-  for (let i = 1; i <= 30; i++) data[`Juzuk ${i}`] = 0;
+  for (let juzuk = 1; juzuk <= 30; juzuk++) {
+    data[`Juzuk ${juzuk}`] = 0;
+  }
 
   records
-    .filter(r => r.kategori === 'Al-Quran')
-    .forEach(r => {
-      const juzuk = num(r.level);
-      if (juzuk >= 1 && juzuk <= 30) data[`Juzuk ${juzuk}`]++;
+    .filter(record =>
+      record.kategori === 'Al-Quran'
+    )
+    .forEach(record => {
+      const juzuk = num(record.level);
+
+      if (juzuk >= 1 && juzuk <= 30) {
+        data[`Juzuk ${juzuk}`]++;
+      }
     });
 
-  const filtered = Object.fromEntries(Object.entries(data).filter(([_, v]) => v > 0));
+  const filtered = Object.fromEntries(
+    Object.entries(data).filter(
+      ([, total]) => total > 0
+    )
+  );
+
+  const element =
+    document.getElementById('juzuk-chart');
+
+  if (!element) return;
 
   if (Object.keys(filtered).length === 0) {
-    document.getElementById('juzuk-chart').innerHTML = '<p class="muted">Belum ada rekod Al-Quran mengikut Juzuk.</p>';
+    element.innerHTML = `
+      <p class="muted">
+        Belum ada rekod Al-Quran mengikut Juzuk.
+      </p>
+    `;
     return;
   }
 
-  renderBarList('juzuk-chart', filtered);
+  renderBarList(
+    'juzuk-chart',
+    filtered
+  );
 }
 
 function renderIqraByYearChart() {
   const data = {};
 
   YEARS.forEach(year => {
-    for (let i = 1; i <= 6; i++) data[`${year} - Iqra ${i}`] = 0;
+    for (let iqra = 1; iqra <= 6; iqra++) {
+      data[`${year} - Iqra ${iqra}`] = 0;
+    }
   });
 
   records
-    .filter(r => r.kategori === 'Iqra')
-    .forEach(r => {
-      const iqra = num(r.level);
-      const year = YEARS.includes(r.tahun) ? r.tahun : 'Tahun 1';
-      const key = `${year} - Iqra ${iqra}`;
-      if (data[key] !== undefined) data[key]++;
+    .filter(record =>
+      record.kategori === 'Iqra'
+    )
+    .forEach(record => {
+      const iqra = num(record.level);
+
+      const year = YEARS.includes(record.tahun)
+        ? record.tahun
+        : 'Tahun 1';
+
+      const key =
+        `${year} - Iqra ${iqra}`;
+
+      if (data[key] !== undefined) {
+        data[key]++;
+      }
     });
 
-  const filtered = Object.fromEntries(Object.entries(data).filter(([_, v]) => v > 0));
+  const filtered = Object.fromEntries(
+    Object.entries(data).filter(
+      ([, total]) => total > 0
+    )
+  );
+
+  const element =
+    document.getElementById(
+      'iqra-year-chart'
+    );
+
+  if (!element) return;
 
   if (Object.keys(filtered).length === 0) {
-    document.getElementById('iqra-year-chart').innerHTML = '<p class="muted">Belum ada rekod Iqra mengikut tahun.</p>';
+    element.innerHTML = `
+      <p class="muted">
+        Belum ada rekod Iqra mengikut tahun.
+      </p>
+    `;
     return;
   }
 
-  renderBarList('iqra-year-chart', filtered);
+  renderBarList(
+    'iqra-year-chart',
+    filtered
+  );
 }
 
 function toggleFields(prefix = 'f') {
-  const kat = document.getElementById(`${prefix}-kategori`).value;
+  const kategori =
+    document.getElementById(
+      `${prefix}-kategori`
+    ).value;
 
   if (prefix === 'f') {
-    document.getElementById('fields-reading').classList.toggle('hidden', ['Khatam','Mentor'].includes(kat));
-    document.getElementById('fields-tamayyuz').classList.toggle('hidden', kat !== 'Tamayyuz');
-    document.getElementById('fields-mentee').classList.toggle('hidden', !(kat === 'Mentor' || kat === 'Tamayyuz'));
+    document
+      .getElementById('fields-reading')
+      .classList
+      .toggle(
+        'hidden',
+        ['Khatam', 'Mentor'].includes(kategori)
+      );
+
+    document
+      .getElementById('fields-tamayyuz')
+      .classList
+      .toggle(
+        'hidden',
+        kategori !== 'Tamayyuz'
+      );
+
+    document
+      .getElementById('fields-mentee')
+      .classList
+      .toggle(
+        'hidden',
+        !(
+          kategori === 'Mentor' ||
+          kategori === 'Tamayyuz'
+        )
+      );
   }
 }
 
 function buildRecord(prefix) {
-  const kat = document.getElementById(`${prefix}-kategori`).value;
-  const tahun = document.getElementById(`${prefix}-tahun`).value;
+  const kategori =
+    document.getElementById(
+      `${prefix}-kategori`
+    ).value;
+
+  const tahun =
+    document.getElementById(
+      `${prefix}-tahun`
+    ).value;
 
   return {
-    id: prefix === 'f' ? id() : document.getElementById('e-id').value,
-    nama: document.getElementById(`${prefix}-nama`).value.trim(),
+    id:
+      prefix === 'f'
+        ? id()
+        : document.getElementById('e-id').value,
+
+    nama:
+      document
+        .getElementById(`${prefix}-nama`)
+        .value
+        .trim(),
+
     tahun: tahun,
-    kelas: normalizeClassName(document.getElementById(`${prefix}-kelas`).value, tahun),
-    kehadiran: document.getElementById(`${prefix}-kehadiran`).value,
-    tarikh: document.getElementById(`${prefix}-tarikh`).value || today,
-    kategori: kat,
-    level: document.getElementById(`${prefix}-level`)?.value || '',
-    page: document.getElementById(`${prefix}-page`)?.value || '',
-    mentee: document.getElementById(`${prefix}-mentee`)?.value || '',
-    tam_status: document.getElementById('f-tam-status')?.value || '',
-    tam_surah: document.getElementById('f-tam-surah')?.value || '',
-    tam_ayat: document.getElementById('f-tam-ayat')?.value || '',
-    catatan: document.getElementById(`${prefix}-catatan`).value.trim()
+
+    kelas:
+      normalizeClassName(
+        document.getElementById(
+          `${prefix}-kelas`
+        ).value,
+        tahun
+      ),
+
+    kehadiran:
+      document.getElementById(
+        `${prefix}-kehadiran`
+      ).value,
+
+    tarikh:
+      document.getElementById(
+        `${prefix}-tarikh`
+      ).value || today,
+
+    kategori: kategori,
+
+    level:
+      document.getElementById(
+        `${prefix}-level`
+      )?.value || '',
+
+    page:
+      document.getElementById(
+        `${prefix}-page`
+      )?.value || '',
+
+    mentee:
+      document.getElementById(
+        `${prefix}-mentee`
+      )?.value || '',
+
+    tam_status:
+      document.getElementById(
+        'f-tam-status'
+      )?.value || '',
+
+    tam_surah:
+      document.getElementById(
+        'f-tam-surah'
+      )?.value || '',
+
+    tam_ayat:
+      document.getElementById(
+        'f-tam-ayat'
+      )?.value || '',
+
+    catatan:
+      document
+        .getElementById(
+          `${prefix}-catatan`
+        )
+        .value
+        .trim()
   };
 }
 
 function openEdit(recordId) {
-  const r = records.find(x => x.id === recordId);
-  if (!r) return;
+  const record =
+    records.find(item => item.id === recordId);
 
-  ['id','nama','tahun','kehadiran','tarikh','kategori','level','page','mentee','catatan'].forEach(k => {
-    const el = document.getElementById('e-' + k);
-    if (el) el.value = r[k] || '';
+  if (!record) return;
+
+  [
+    'id',
+    'nama',
+    'tahun',
+    'kehadiran',
+    'tarikh',
+    'kategori',
+    'level',
+    'page',
+    'mentee',
+    'catatan'
+  ].forEach(key => {
+    const element =
+      document.getElementById(`e-${key}`);
+
+    if (element) {
+      element.value = record[key] || '';
+    }
   });
 
-  renderClassDropdown('e-kelas', r.kelas || '', r.tahun || '');
-  document.getElementById('edit-modal').classList.remove('hidden');
+  renderClassDropdown(
+    'e-kelas',
+    record.kelas || '',
+    record.tahun || ''
+  );
+
+  document
+    .getElementById('edit-modal')
+    .classList
+    .remove('hidden');
 }
 
 function closeEdit() {
-  document.getElementById('edit-modal').classList.add('hidden');
+  document
+    .getElementById('edit-modal')
+    .classList
+    .add('hidden');
 }
 
 function deleteRecord(recordId) {
-  if (!confirm('Padam rekod ini?')) return;
+  if (!confirm('Padam rekod ini?')) {
+    return;
+  }
 
-  records = records.filter(r => r.id !== recordId);
+  records = records.filter(
+    record => record.id !== recordId
+  );
+
   saveRecords();
   closeEdit();
   renderAll();
@@ -389,17 +1048,42 @@ function exportExcel() {
     return;
   }
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(records), 'Rekod Murid');
-  XLSX.writeFile(wb, 'road-to-khatam-rekod.xlsx');
+  const workbook =
+    XLSX.utils.book_new();
+
+  const worksheet =
+    XLSX.utils.json_to_sheet(records);
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    'Rekod Murid'
+  );
+
+  XLSX.writeFile(
+    workbook,
+    'road-to-khatam-rekod.xlsx'
+  );
 }
 
 function exportJSON() {
-  const blob = new Blob([JSON.stringify(records, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'road-to-khatam-backup.json';
-  a.click();
+  const blob = new Blob(
+    [JSON.stringify(records, null, 2)],
+    { type: 'application/json' }
+  );
+
+  const anchor =
+    document.createElement('a');
+
+  anchor.href =
+    URL.createObjectURL(blob);
+
+  anchor.download =
+    'road-to-khatam-backup.json';
+
+  anchor.click();
+
+  URL.revokeObjectURL(anchor.href);
 }
 
 function importRows(rows) {
@@ -410,62 +1094,183 @@ function importRows(rows) {
       lower[cleanHeaderKey(key)] = row[key];
     });
 
-    const nama = getValue(lower, ['nama', 'nama murid', 'name']);
+    const nama = getValue(
+      lower,
+      ['nama', 'nama murid', 'name']
+    );
+
     if (!nama) return;
 
-    let rawTahun = getValue(lower, ['tahun', 'tingkatan']);
-    let rawKelas = getValue(lower, ['kelas']);
-    let tahun = rawTahun ? normalizeText(rawTahun) : '';
+    const rawTahun =
+      getValue(
+        lower,
+        ['tahun', 'tingkatan']
+      );
 
-    if (tahun && !tahun.toLowerCase().startsWith('tahun')) {
-      const number = String(tahun).replace(/[^1-6]/g, '') || '1';
-      tahun = `Tahun ${number}`;
+    const rawKelas =
+      getValue(
+        lower,
+        ['kelas']
+      );
+
+    let tahun =
+      rawTahun
+        ? normalizeText(rawTahun)
+        : '';
+
+    if (
+      tahun &&
+      !tahun.toLowerCase().startsWith('tahun')
+    ) {
+      const yearNumber =
+        String(tahun)
+          .replace(/[^1-6]/g, '') || '1';
+
+      tahun = `Tahun ${yearNumber}`;
     }
 
-    let kelas = normalizeClassName(rawKelas, tahun);
+    let kelas =
+      normalizeClassName(rawKelas, tahun);
 
     if (!tahun) {
-      const m = kelas.match(/Tahun\s[1-6]/);
-      tahun = m ? m[0] : 'Tahun 1';
+      const match =
+        kelas.match(/Tahun\s[1-6]/);
+
+      tahun =
+        match ? match[0] : 'Tahun 1';
     }
 
-    if (!kelas) kelas = `${tahun} Nova`;
+    if (!kelas) {
+      kelas = `${tahun} Nova`;
+    }
 
-    const iqra = getValue(lower, ['iqra']);
-    const modul = getValue(lower, ['modul']);
-    const iqraPage = getValue(lower, ['m/s (iqra)', 'ms iqra', 'm/s iqra']);
-    const quran = getValue(lower, ['quran', 'al-quran', 'al quran']);
-    const juzuk = getValue(lower, ['juzuk']);
-    const mukaSurat = getValue(lower, ['muka surat', 'ms', 'm/s']);
-    const khatam = getValue(lower, ['khatam']);
-    const mentor = getValue(lower, ['mentor']);
-    const tamayyuz = getValue(lower, ['tamayyuz']);
-    const surah = getValue(lower, ['surah']);
-    const ayat = getValue(lower, ['ayat']);
+    const iqra =
+      getValue(lower, ['iqra']);
+
+    const modul =
+      getValue(lower, ['modul']);
+
+    const iqraPage =
+      getValue(lower, [
+        'm/s (iqra)',
+        'ms iqra',
+        'm/s iqra'
+      ]);
+
+    const quran =
+      getValue(lower, [
+        'quran',
+        'al-quran',
+        'al quran'
+      ]);
+
+    const juzuk =
+      getValue(lower, ['juzuk']);
+
+    const mukaSurat =
+      getValue(lower, [
+        'muka surat',
+        'ms',
+        'm/s'
+      ]);
+
+    const khatam =
+      getValue(lower, ['khatam']);
+
+    const mentor =
+      getValue(lower, ['mentor']);
+
+    const tamayyuz =
+      getValue(lower, ['tamayyuz']);
+
+    const surah =
+      getValue(lower, ['surah']);
+
+    const ayat =
+      getValue(lower, ['ayat']);
 
     let kategori = 'Iqra';
 
-    if (tamayyuz || surah || ayat) kategori = 'Tamayyuz';
-    else if (mentor) kategori = 'Mentor';
-    else if (khatam) kategori = 'Khatam';
-    else if (juzuk || quran || mukaSurat) kategori = 'Al-Quran';
-    else if (iqra || modul || iqraPage) kategori = 'Iqra';
+    if (tamayyuz || surah || ayat) {
+      kategori = 'Tamayyuz';
+    } else if (mentor) {
+      kategori = 'Mentor';
+    } else if (khatam) {
+      kategori = 'Khatam';
+    } else if (
+      juzuk ||
+      quran ||
+      mukaSurat
+    ) {
+      kategori = 'Al-Quran';
+    } else if (
+      iqra ||
+      modul ||
+      iqraPage
+    ) {
+      kategori = 'Iqra';
+    }
 
     records.push({
       id: id(),
-      nama: normalizeText(nama),
+
+      nama:
+        normalizeText(nama),
+
       tahun: tahun,
+
       kelas: kelas,
-      kehadiran: getValue(lower, ['kehadiran', 'status']) || 'Hadir',
-      tarikh: normalizeDate(getValue(lower, ['tarikh', 'date'])),
+
+      kehadiran:
+        getValue(
+          lower,
+          ['kehadiran', 'status']
+        ) || 'Hadir',
+
+      tarikh:
+        normalizeDate(
+          getValue(
+            lower,
+            ['tarikh', 'date']
+          )
+        ),
+
       kategori: kategori,
-      level: iqra || juzuk || modul || '',
-      page: iqraPage || mukaSurat || '',
-      mentee: getValue(lower, ['mentee', 'nama mentee']) || '',
-      tam_status: getValue(lower, ['status hafazan']) || '',
-      tam_surah: surah || '',
-      tam_ayat: ayat || '',
-      catatan: getValue(lower, ['catatan', 'nota']) || ''
+
+      level:
+        iqra ||
+        juzuk ||
+        modul ||
+        '',
+
+      page:
+        iqraPage ||
+        mukaSurat ||
+        '',
+
+      mentee:
+        getValue(
+          lower,
+          ['mentee', 'nama mentee']
+        ) || '',
+
+      tam_status:
+        getValue(
+          lower,
+          ['status hafazan']
+        ) || '',
+
+      tam_surah:
+        surah || '',
+
+      tam_ayat:
+        ayat || '',
+
+      catatan:
+        getValue(
+          lower,
+          ['catatan', 'nota']
+        ) || ''
     });
   });
 
@@ -474,167 +1279,458 @@ function importRows(rows) {
 }
 
 function rowsFromSheet(sheet) {
-  const matrix = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
-  const headerIndex = matrix.findIndex(row => row.some(cell => cleanHeaderKey(cell) === 'nama'));
+  const matrix =
+    XLSX.utils.sheet_to_json(
+      sheet,
+      {
+        header: 1,
+        defval: ''
+      }
+    );
+
+  const headerIndex =
+    matrix.findIndex(row =>
+      row.some(
+        cell =>
+          cleanHeaderKey(cell) === 'nama'
+      )
+    );
 
   if (headerIndex >= 0) {
-    const headers = matrix[headerIndex].map(h => String(h || '').trim());
-    return matrix.slice(headerIndex + 1).map(row => {
-      const obj = {};
-      headers.forEach((h, i) => {
-        if (h) obj[h] = row[i] || '';
+    const headers =
+      matrix[headerIndex].map(
+        header =>
+          String(header || '').trim()
+      );
+
+    return matrix
+      .slice(headerIndex + 1)
+      .map(row => {
+        const object = {};
+
+        headers.forEach((header, index) => {
+          if (header) {
+            object[header] =
+              row[index] || '';
+          }
+        });
+
+        return object;
       });
-      return obj;
-    });
   }
 
-  return XLSX.utils.sheet_to_json(sheet, {range: 0, defval: ''});
+  return XLSX.utils.sheet_to_json(
+    sheet,
+    {
+      range: 0,
+      defval: ''
+    }
+  );
 }
 
 async function importFile(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
+  const extension =
+    file.name
+      .split('.')
+      .pop()
+      .toLowerCase();
 
-  if (['xlsx','xls'].includes(ext)) {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf);
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    importRows(rowsFromSheet(sheet));
+  if (
+    ['xlsx', 'xls'].includes(extension)
+  ) {
+    const buffer =
+      await file.arrayBuffer();
+
+    const workbook =
+      XLSX.read(buffer);
+
+    const sheet =
+      workbook.Sheets[
+        workbook.SheetNames[0]
+      ];
+
+    importRows(
+      rowsFromSheet(sheet)
+    );
+
     return;
   }
 
-  const text = await file.text();
+  const text =
+    await file.text();
 
-  if (ext === 'csv') {
-    const [head, ...lines] = text.split(/\r?\n/).filter(Boolean);
-    const headers = head.split(',').map(h => h.trim());
+  if (extension === 'csv') {
+    const [
+      headerLine,
+      ...lines
+    ] =
+      text
+        .split(/\r?\n/)
+        .filter(Boolean);
 
-    const rows = lines.map(l => {
-      const v = l.split(',');
-      const o = {};
-      headers.forEach((h, i) => o[h] = v[i] || '');
-      return o;
-    });
+    const headers =
+      headerLine
+        .split(',')
+        .map(header => header.trim());
+
+    const rows =
+      lines.map(line => {
+        const values =
+          line.split(',');
+
+        const object = {};
+
+        headers.forEach(
+          (header, index) => {
+            object[header] =
+              values[index] || '';
+          }
+        );
+
+        return object;
+      });
 
     importRows(rows);
     return;
   }
 
-  if (ext === 'html') {
-    const doc = new DOMParser().parseFromString(text, 'text/html');
-    const trs = [...doc.querySelectorAll('tr')];
-    const heads = [...trs[0].querySelectorAll('th,td')].map(x => x.textContent.trim());
+  if (extension === 'html') {
+    const documentObject =
+      new DOMParser()
+        .parseFromString(
+          text,
+          'text/html'
+        );
 
-    const rows = trs.slice(1).map(tr => {
-      const cells = [...tr.querySelectorAll('td,th')];
-      const o = {};
-      heads.forEach((h, i) => o[h] = cells[i]?.textContent.trim() || '');
-      return o;
-    });
+    const tableRows = [
+      ...documentObject.querySelectorAll('tr')
+    ];
+
+    if (tableRows.length === 0) {
+      return;
+    }
+
+    const headers = [
+      ...tableRows[0]
+        .querySelectorAll('th,td')
+    ].map(
+      cell => cell.textContent.trim()
+    );
+
+    const rows =
+      tableRows
+        .slice(1)
+        .map(tableRow => {
+          const cells = [
+            ...tableRow
+              .querySelectorAll('td,th')
+          ];
+
+          const object = {};
+
+          headers.forEach(
+            (header, index) => {
+              object[header] =
+                cells[index]
+                  ?.textContent
+                  .trim() || '';
+            }
+          );
+
+          return object;
+        });
 
     importRows(rows);
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('f-tarikh').value = today;
+document.addEventListener(
+  'DOMContentLoaded',
+  () => {
+    const dateInput =
+      document.getElementById('f-tarikh');
 
-  renderClassDropdown('f-kelas', '', document.getElementById('f-tahun').value);
-  renderClassDropdown('e-kelas', '', document.getElementById('e-tahun').value);
+    if (dateInput) {
+      dateInput.value = today;
+    }
 
-  document.getElementById('f-tahun').addEventListener('change', () =>
-    renderClassDropdown('f-kelas', '', document.getElementById('f-tahun').value)
-  );
-
-  document.getElementById('e-tahun').addEventListener('change', () =>
-    renderClassDropdown('e-kelas', '', document.getElementById('e-tahun').value)
-  );
-
-  document.getElementById('f-kategori').addEventListener('change', () => toggleFields('f'));
-
-  document.querySelectorAll('.nav-link[data-tab], [data-tab-target]').forEach(btn =>
-    btn.addEventListener('click', e => {
-      e.preventDefault();
-      showTab(btn.dataset.tab || btn.dataset.tabTarget);
-    })
-  );
-
-  ['search-input','filter-status','filter-kategori'].forEach(x =>
-    document.getElementById(x).addEventListener('input', renderTable)
-  );
-
-  document.getElementById('filter-tahun').addEventListener('change', () => {
-    populateClassFilters();
-    renderTable();
-  });
-
-  document.getElementById('filter-kelas').addEventListener('change', renderTable);
-
-  document.getElementById('reset-filter').addEventListener('click', () => {
-    ['search-input','filter-tahun','filter-kelas','filter-status','filter-kategori'].forEach(x =>
-      document.getElementById(x).value = ''
+    renderClassDropdown(
+      'f-kelas',
+      '',
+      document.getElementById('f-tahun')?.value || ''
     );
-    populateClassFilters();
-    renderTable();
-  });
 
-  document.getElementById('add-form').addEventListener('submit', e => {
-    e.preventDefault();
+    renderClassDropdown(
+      'e-kelas',
+      '',
+      document.getElementById('e-tahun')?.value || ''
+    );
 
-    records.push(buildRecord('f'));
-    saveRecords();
+    document
+      .getElementById('f-tahun')
+      ?.addEventListener(
+        'change',
+        () => {
+          renderClassDropdown(
+            'f-kelas',
+            '',
+            document.getElementById('f-tahun').value
+          );
+        }
+      );
 
-    e.target.reset();
-    document.getElementById('f-tarikh').value = today;
-    renderClassDropdown('f-kelas', '', document.getElementById('f-tahun').value);
+    document
+      .getElementById('e-tahun')
+      ?.addEventListener(
+        'change',
+        () => {
+          renderClassDropdown(
+            'e-kelas',
+            '',
+            document.getElementById('e-tahun').value
+          );
+        }
+      );
+
+    document
+      .getElementById('f-kategori')
+      ?.addEventListener(
+        'change',
+        () => toggleFields('f')
+      );
+
+    document
+      .querySelectorAll(
+        '.nav-link[data-tab], [data-tab-target]'
+      )
+      .forEach(button =>
+        button.addEventListener(
+          'click',
+          event => {
+            event.preventDefault();
+
+            showTab(
+              button.dataset.tab ||
+              button.dataset.tabTarget
+            );
+          }
+        )
+      );
+
+    [
+      'search-input',
+      'filter-status',
+      'filter-kategori'
+    ].forEach(idValue => {
+      document
+        .getElementById(idValue)
+        ?.addEventListener(
+          'input',
+          renderTable
+        );
+    });
+
+    document
+      .getElementById('filter-tahun')
+      ?.addEventListener(
+        'change',
+        () => {
+          populateClassFilters();
+          renderTable();
+        }
+      );
+
+    document
+      .getElementById('filter-kelas')
+      ?.addEventListener(
+        'change',
+        renderTable
+      );
+
+    document
+      .getElementById('reset-filter')
+      ?.addEventListener(
+        'click',
+        () => {
+          [
+            'search-input',
+            'filter-tahun',
+            'filter-kelas',
+            'filter-status',
+            'filter-kategori'
+          ].forEach(idValue => {
+            const element =
+              document.getElementById(idValue);
+
+            if (element) {
+              element.value = '';
+            }
+          });
+
+          populateClassFilters();
+          renderTable();
+        }
+      );
+
+    document
+      .getElementById('add-form')
+      ?.addEventListener(
+        'submit',
+        event => {
+          event.preventDefault();
+
+          records.push(
+            buildRecord('f')
+          );
+
+          saveRecords();
+
+          event.target.reset();
+
+          const newDateInput =
+            document.getElementById('f-tarikh');
+
+          if (newDateInput) {
+            newDateInput.value = today;
+          }
+
+          renderClassDropdown(
+            'f-kelas',
+            '',
+            document.getElementById('f-tahun')?.value || ''
+          );
+
+          toggleFields('f');
+
+          const message =
+            document.getElementById('form-msg');
+
+          if (message) {
+            message.textContent =
+              '✓ Rekod berjaya disimpan.';
+
+            message.classList.remove('hidden');
+          }
+
+          renderAll();
+        }
+      );
+
+    document
+      .getElementById('edit-form')
+      ?.addEventListener(
+        'submit',
+        event => {
+          event.preventDefault();
+
+          const recordId =
+            document.getElementById('e-id').value;
+
+          const recordIndex =
+            records.findIndex(
+              record => record.id === recordId
+            );
+
+          if (recordIndex > -1) {
+            records[recordIndex] =
+              buildRecord('e');
+
+            saveRecords();
+            closeEdit();
+            renderAll();
+          }
+        }
+      );
+
+    document
+      .getElementById('modal-close')
+      ?.addEventListener(
+        'click',
+        closeEdit
+      );
+
+    document
+      .getElementById('delete-record')
+      ?.addEventListener(
+        'click',
+        () => {
+          const recordId =
+            document.getElementById('e-id').value;
+
+          deleteRecord(recordId);
+        }
+      );
+
+    document
+      .getElementById('export-excel')
+      ?.addEventListener(
+        'click',
+        exportExcel
+      );
+
+    document
+      .getElementById('export-excel-top')
+      ?.addEventListener(
+        'click',
+        exportExcel
+      );
+
+    document
+      .getElementById('export-json')
+      ?.addEventListener(
+        'click',
+        exportJSON
+      );
+
+    document
+      .getElementById('clear-data')
+      ?.addEventListener(
+        'click',
+        () => {
+          if (
+            confirm('Padam semua data?')
+          ) {
+            records = [];
+            saveRecords();
+            renderAll();
+          }
+        }
+      );
+
+    document
+      .getElementById('import-file')
+      ?.addEventListener(
+        'change',
+        async event => {
+          const file =
+            event.target.files[0];
+
+          if (!file) return;
+
+          await importFile(file);
+
+          const message =
+            document.getElementById('data-msg');
+
+          if (message) {
+            message.textContent =
+              '✓ Data berjaya diimport.';
+
+            message.classList.remove('hidden');
+          }
+
+          event.target.value = '';
+        }
+      );
+
+    document
+      .getElementById('print-btn')
+      ?.addEventListener(
+        'click',
+        () => window.print()
+      );
+
     toggleFields('f');
-
-    document.getElementById('form-msg').textContent = '✓ Rekod berjaya disimpan.';
-    document.getElementById('form-msg').classList.remove('hidden');
-
     renderAll();
-  });
-
-  document.getElementById('edit-form').addEventListener('submit', e => {
-    e.preventDefault();
-
-    const idx = records.findIndex(r => r.id === document.getElementById('e-id').value);
-
-    if (idx > -1) {
-      records[idx] = buildRecord('e');
-      saveRecords();
-      closeEdit();
-      renderAll();
-    }
-  });
-
-  document.getElementById('modal-close').addEventListener('click', closeEdit);
-
-  document.getElementById('delete-record').addEventListener('click', () =>
-    deleteRecord(document.getElementById('e-id').value)
-  );
-
-  document.getElementById('export-excel').addEventListener('click', exportExcel);
-  document.getElementById('export-excel-top').addEventListener('click', exportExcel);
-  document.getElementById('export-json').addEventListener('click', exportJSON);
-
-  document.getElementById('clear-data').addEventListener('click', () => {
-    if (confirm('Padam semua data?')) {
-      records = [];
-      saveRecords();
-      renderAll();
-    }
-  });
-
-  document.getElementById('import-file').addEventListener('change', async e => {
-    if (e.target.files[0]) {
-      await importFile(e.target.files[0]);
-      document.getElementById('data-msg').textContent = '✓ Data berjaya diimport.';
-      document.getElementById('data-msg').classList.remove('hidden');
-    }
-  });
-
-  document.getElementById('print-btn').addEventListener('click', () => window.print());
-
-  toggleFields('f');
-  renderAll();
-});
+  }
+);
