@@ -26,6 +26,7 @@
         <button id="export-excel-top" class="btn-light" type="button">⬇ Export Excel</button>
       </div>
     </div>
+
     <nav class="app-shell nav-tabs">
       <button type="button" class="nav-link active" data-tab="dashboard">📊 Dashboard</button>
       <button type="button" class="nav-link" data-tab="rekod">👥 Rekod Murid</button>
@@ -55,16 +56,48 @@
         <div class="progress-track"><div id="overall-progress" class="progress-fill"></div></div>
       </div>
 
-      <div class="dashboard-grid mt-6">
-        <div class="card">
-          <h2>🏆 Top 5 Pelajar Terbaik</h2>
-          <div id="top-five" class="list-block mt-4"></div>
-        </div>
-        <div class="card">
-          <h2>📌 Aliran Kategori</h2>
-          <div class="flow-line mt-4">
-            <span>Iqra</span><b>→</b><span>Al-Quran</span><b>→</b><span>Khatam</span><b>→</b><span>Mentor</span><b>→</b><span>Tamayyuz</span>
+      <div class="card mt-6">
+        <div class="card-title-row">
+          <div>
+            <h2>Jumlah Murid Tahun 6</h2>
+            <p>Jumlah keseluruhan murid Tahun 6 sahaja.</p>
           </div>
+          <strong id="stat-year6">0</strong>
+        </div>
+      </div>
+
+      <div class="card mt-6 table-card">
+        <div class="card-title-row mb-3">
+          <div>
+            <h2>Senarai Murid Tahun 6</h2>
+            <p class="muted">Paparan semua murid Tahun 6 sahaja.</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama</th>
+                <th>Tahun</th>
+                <th>Kelas</th>
+                <th>Kehadiran</th>
+                <th>Tarikh</th>
+                <th>Kategori</th>
+                <th>Maklumat Bacaan</th>
+                <th>Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="year6-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <h2>📌 Aliran Kategori</h2>
+        <div class="flow-line mt-4">
+          <span>Iqra</span><b>→</b><span>Al-Quran</span><b>→</b><span>Khatam</span><b>→</b><span>Mentor</span><b>→</b><span>Tamayyuz</span>
         </div>
       </div>
     </section>
